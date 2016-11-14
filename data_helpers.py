@@ -21,7 +21,7 @@ def shuffle_data(data):
     data = data.reshape((data.shape[0],))
     num_samples = data.shape[0]
     # create empty array sized by 10 * num_samples
-    shuffles = np.zeros((num_samples*10,))
-    for i in range(10):
+    shuffles = np.zeros((num_samples*100,))
+    for i in range(100):
         shuffles[i*num_samples:(i+1)*num_samples] = random.sample(list(data), data.shape[0])
     return shuffles
