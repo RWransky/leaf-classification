@@ -39,6 +39,8 @@ endE = 0.1
 anneling_steps = 10000
 # How many episodes of game environment to train network with.
 num_episodes = 10000
+# How many episodes before training begins
+num_train_episodes = 50
 # Whether to load a saved model.
 load_model = False
 # The path to save our model to.
@@ -48,7 +50,7 @@ h_size = 512
 # The max allowed length of our episode.
 max_epLength = 250
 # How many steps of random actions before training begins.
-pre_train_steps = 51*max_epLength
+pre_train_steps = num_train_episodes*max_epLength
 # Number of epidoes to periodically save for analysis
 summaryLength = 100
 
@@ -166,8 +168,9 @@ def train():
 
             # Add the episode to the episode recorder
             if len(episodeBuffer) > trace_length:
-                bufferArray = np.array(episodeBuffer)
-                myRecorder.add(bufferArray)
+                if i <= num_train_episodes or i % 7 == 0:
+                    bufferArray = np.array(episodeBuffer)
+                    myRecorder.add(bufferArray)
             else:
                 print('episode buffer did not have enough frames to record')
             jList.append(j)
