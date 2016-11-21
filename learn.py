@@ -1,210 +1,200 @@
 '''
 Leaf Classifier via Deep Reinforcement Learning
 
-Initial code inspired by @yanpanlau
+Initial code inspired by @awjuliani
 
 Extensive changes to game model and training methods
 
 '''
 
-from __future__ import print_function
-
-import game
-
-import argparse
-
-import random
+import tensorflow as tf
 import numpy as np
-from collections import deque
+import random
+import os
+import argparse
+import tensorflow.contrib.slim as slim
 
-import json
-from keras import initializations
-from keras.initializations import normal, identity
-from keras.models import model_from_json
-from keras.models import Sequential
-from keras.layers.core import Dense, Dropout, Activation, Flatten
-from keras.layers.convolutional import Convolution2D, MaxPooling2D
-from keras.optimizers import SGD, Adam
-# the name of the game being played for log files
-GAME = "leaf"
-CONFIG = "nothreshold"
-# number of valid actions
-ACTIONS = 99
-# decay rate of past observations
-GAMMA = 0.99
-# timesteps to observe before training
-OBSERVATION = 100000.
-# frames over which to anneal epsilon
-EXPLORE = 98000.
-# final value of epsilon
-FINAL_EPSILON = 0.0001
-# starting value of epsilon
-INITIAL_EPSILON = 0.1
-# number of previous transitions to remember
-REPLAY_MEMORY = 50000
-# size of minibatch
-BATCH = 32
-FRAME_PER_ACTION = 1
+from model_helpers import *
+from episode_recorder import *
+from network import *
+from game import *
 
-img_rows, img_cols = 80, 80
-# image is binary
-img_channels = 1
+# Setting the training parameters
 
-
-def buildmodel():
-    print("Now we build the model")
-    model = Sequential()
-    model.add(Convolution2D(32, 8, 8, subsample=(4, 4), init=lambda shape,
-        name: normal(shape, scale=0.01, name=name), border_mode='same',
-        input_shape=(img_channels, img_rows, img_cols)))
-    model.add(Activation('relu'))
-    model.add(Convolution2D(64, 4, 4, subsample=(2, 2), init=lambda shape,
-        name: normal(shape, scale=0.01, name=name), border_mode='same'))
-    model.add(Activation('relu'))
-    model.add(Convolution2D(64, 3, 3, subsample=(1, 1), init=lambda shape,
-        name: normal(shape, scale=0.01, name=name), border_mode='same'))
-    model.add(Activation('relu'))
-    model.add(Flatten())
-    model.add(Dense(512, init=lambda shape, name: normal(shape, scale=0.01, name=name)))
-    model.add(Activation('relu'))
-    model.add(Dense(ACTIONS, init=lambda shape, name: normal(shape, scale=0.01, name=name)))
-
-    adam = Adam(lr=1e-6)
-    model.compile(loss='mse', optimizer=adam)
-    print("We finish building the model")
-    return model
+# Number of possible actions
+actions = 99
+# How many experience traces to use for each training step.
+batch_size = 4
+# How long each experience trace will be when training
+trace_length = 8
+# How often to perform a training step.
+update_freq = 5
+# Discount factor on the target Q-values
+y = .99
+# Starting chance of random action
+startE = 1
+# Final chance of random action
+endE = 0.1
+# How many steps of training to reduce startE to endE.
+anneling_steps = 10000
+# How many episodes of game environment to train network with.
+num_episodes = 10000
+# How many episodes before training begins
+num_train_episodes = 50
+# Whether to load a saved model.
+load_model = False
+# The path to save our model to.
+path = "./drqn"
+# The size of the final convolutional layer before splitting it into Advantage and Value streams.
+h_size = 512
+# The max allowed length of our episode.
+max_epLength = 250
+# How many steps of random actions before training begins.
+pre_train_steps = num_train_episodes*max_epLength
+# Number of epidoes to periodically save for analysis
+summaryLength = 100
 
 
-def trainNetwork(model, args):
-    # open up a game state to communicate with emulator
-    game_state = game.GameState()
+def train():
+    tf.reset_default_graph()
+    # We define LSTM cells for primary and target reinforcement networks
+    cell = tf.nn.rnn_cell.LSTMCell(num_units=h_size, state_is_tuple=True)
+    cellT = tf.nn.rnn_cell.LSTMCell(num_units=h_size, state_is_tuple=True)
+    mainN = Network(h_size, cell, 'main')
+    targetN = Network(h_size, cellT, 'target')
 
-    # store the previous observations in replay memory
-    D = deque()
+    init = tf.initialize_all_variables()
 
-    # get the first state by doing nothing and get the image
-    a_t = np.zeros((ACTIONS,))
-    s_t, r_0, terminal = game_state.frame_step(a_t, do_nothing=True)
+    saver = tf.train.Saver(max_to_keep=5)
 
-    # In Keras, need to reshape
-    s_t = s_t.reshape(1, 1, s_t.shape[0], s_t.shape[1])
+    trainables = tf.trainable_variables()
 
-    if args['mode'] == 'Run':
-        # We keep observe, never train
-        OBSERVE = 999999999
-        epsilon = FINAL_EPSILON
-        print ("Now we load weight")
-        model.load_weights("model.h5")
-        adam = Adam(lr=1e-6)
-        model.compile(loss='mse', optimizer=adam)
-        print ("Weights loaded successfully")
-    else:
-        # We go to training mode
-        OBSERVE = OBSERVATION
-        epsilon = INITIAL_EPSILON
+    targetOps = updateTargetGraph(trainables)
 
-    t = 0
-    while (t < EXPLORE+OBSERVE-1):
-        loss = 0
-        Q_sa = 0
-        action_index = 0
-        r_t = 0
-        a_t = np.zeros([ACTIONS])
-        # choose an action epsilon greedy
-        if t % FRAME_PER_ACTION == 0:
-            if random.random() <= epsilon:
-                print("----------Random Action----------")
-                action_index = random.randrange(ACTIONS)
-                a_t[action_index] = 1
-            else:
-                # input image, get the prediction
-                q = model.predict(s_t)
-                max_Q = np.argmax(q)
-                action_index = max_Q
-                a_t[max_Q] = 1
+    myRecorder = episode_recorder()
 
-        # We reduce the epsilon gradually
-        if epsilon > FINAL_EPSILON and t > OBSERVE:
-            epsilon -= (INITIAL_EPSILON - FINAL_EPSILON) / EXPLORE
+    # Determine the rate of decreasing random actions
+    e = startE
+    stepDrop = (startE - endE)/anneling_steps
 
-        # run the selected action and observed next state and reward
-        x_t1, r_t, terminal = game_state.frame_step(a_t)
+    # create lists to contain total rewards and steps per episode
+    jList = []
+    rList = []
+    total_steps = 0
 
-        s_t1 = x_t1.reshape(1, 1, x_t1.shape[0], x_t1.shape[1])
+    # initialize game state
+    game = GameState()
 
-        # store the transition in D
-        D.append((s_t, action_index, r_t, s_t1, terminal))
-        if len(D) > REPLAY_MEMORY:
-            D.popleft()
+    # Make a path for our model to be saved in.
+    if not os.path.exists(path):
+        os.makedirs(path)
 
-        # only train if done observing
-        if t > OBSERVE:
-            # sample a minibatch to train on
-            minibatch = random.sample(D, BATCH)
-            # 32, 1, 80, 80
-            inputs = np.zeros((BATCH, 1, s_t.shape[2], s_t.shape[3]))
-            print(inputs.shape)
-            # 32, 99
-            targets = np.zeros((inputs.shape[0], ACTIONS))
+    with tf.Session() as sess:
+        if load_model is True:
+            print('Loading Model...')
+            ckpt = tf.train.get_checkpoint_state(path)
+            saver.restore(sess, ckpt.model_checkpoint_path)
+        sess.run(init)
 
-            # Now we do the experience replay
-            for i in range(0, len(minibatch)):
-                state_t = minibatch[i][0]
-                # This is action index
-                action_t = minibatch[i][1]
-                reward_t = minibatch[i][2]
-                state_t1 = minibatch[i][3]
-                terminal = minibatch[i][4]
-                # if terminated, only equals reward
+        # Set the target network to be equal to the primary network.
+        updateTarget(targetOps, sess)
 
-                inputs[i:i+1] = state_t
-                # Choosing certain species probability
-                targets[i] = model.predict(state_t)
-                Q_sa = model.predict(state_t1)
+        for i in range(num_episodes):
+            episodeBuffer = []
+            # Reset environment and get first new observation
+            sP, truth = game.reset()
+            s = processState(sP)
+            d = False
+            rAll = 0
+            j = 0
+            # Reset the recurrent layer's hidden state
+            state = (np.zeros([1, h_size]), np.zeros([1, h_size]))
 
-                if terminal:
-                    targets[i, action_t] = reward_t
+            # The Deep Reinforcement Network
+            while j < max_epLength:
+                j += 1
+                # Choose an action either randomly or from prediction
+                if np.random.rand(1) < e or total_steps < pre_train_steps:
+                    if total_steps < pre_train_steps:
+                        a = truth
+                    else:
+                        a = np.random.randint(0, actions)
+                    state1 = sess.run(mainN.rnn_state,
+                        feed_dict={mainN.scalarInput: [s/255.0],
+                        mainN.trainLength: 1, mainN.state_in: state, mainN.batch_size: 1})
                 else:
-                    targets[i, action_t] = reward_t + GAMMA * np.max(Q_sa)
+                    a, state1 = sess.run([mainN.predict, mainN.rnn_state],
+                        feed_dict={mainN.scalarInput: [s/255.0],
+                        mainN.trainLength: 1, mainN.state_in: state, mainN.batch_size: 1})
+                    a = a[0]
+                s1P, r, d, truth = game.frame_step(a)
+                s1 = processState(s1P)
+                total_steps += 1
+                episodeBuffer.append(np.reshape(np.array([s, a, r, s1, d]), [1, 5]))
+                if total_steps > pre_train_steps:
+                    if e > endE:
+                        e -= stepDrop
 
-            # targets2 = normalize(targets)
-            loss += model.train_on_batch(inputs, targets)
+                    if total_steps % (update_freq*100) == 0:
+                        print("Target network updated.")
+                        updateTarget(targetOps, sess)
 
-        s_t = s_t1
-        t += 1
+                    if total_steps % (update_freq) == 0:
+                        # Reset the recurrent layer's hidden state
+                        state_train = (np.zeros([batch_size, h_size]), np.zeros([batch_size, h_size]))
+                        # Get a random batch of experiences.
+                        trainBatch = myRecorder.sample(batch_size, trace_length)
+                        # Below we perform the Double-DQN update to the target Q-values
+                        Q1 = sess.run(mainN.predict, feed_dict={
+                            mainN.scalarInput: np.vstack(trainBatch[:, 3]/255.0),
+                            mainN.trainLength: trace_length, mainN.state_in: state_train, mainN.batch_size: batch_size})
+                        Q2 = sess.run(targetN.Qout, feed_dict={
+                            targetN.scalarInput: np.vstack(trainBatch[:, 3]/255.0),
+                            targetN.trainLength: trace_length, targetN.state_in: state_train, targetN.batch_size: batch_size})
+                        end_multiplier = -(trainBatch[:, 4] - 1)
+                        doubleQ = Q2[range(batch_size*trace_length), Q1]
+                        targetQ = trainBatch[:, 2] + (y*doubleQ * end_multiplier)
+                        # Update the network with our target values.
+                        sess.run(mainN.updateModel,
+                            feed_dict={mainN.scalarInput: np.vstack(trainBatch[:, 0]/255.0), mainN.targetQ: targetQ,
+                            mainN.actions: trainBatch[:, 1], mainN.trainLength: trace_length,
+                            mainN.state_in: state_train, mainN.batch_size: batch_size})
+                rAll += r
+                s = s1
+                sP = s1P
+                state = state1
+                if d is True:
+                    break
 
-        # print info
-        state = ""
-        if t <= OBSERVE:
-            state = "observe"
-        else:
-            state = "train"
+            # Add the episode to the episode recorder
+            if len(episodeBuffer) > trace_length:
+                if i <= num_train_episodes or i % 7 == 0:
+                    bufferArray = np.array(episodeBuffer)
+                    myRecorder.add(bufferArray)
+            else:
+                print('episode buffer did not have enough frames to record')
+            jList.append(j)
+            rList.append(rAll)
 
-        # save progress every 100 iterations and if training
-        if (t % 100 == 0) & (state == "train"):
-            print("Now we save model")
-            model.save_weights("model.h5", overwrite=True)
-            with open("model.json", "w") as outfile:
-                json.dump(model.to_json(), outfile)
+            print('Completed episode {0} with total score of {1}'.format(i, str(rAll)))
 
-        print("TIMESTEP", t, "/ STATE", state, \
-            "/ EPSILON", epsilon, "/ ACTION", action_index, "/ REWARD", r_t, \
-            "/ Q_MAX " , np.max(Q_sa), "/ Loss ", loss)
+            # Periodically save the model.
+            if i % 1000 == 0 and i != 0:
+                saver.save(sess, path+'/model-'+str(i)+'.cptk')
+                print("Saved Model")
 
-    print("Episode finished!")
-    print("************************")
-
-
-def playGame(args):
-    model = buildmodel()
-    trainNetwork(model, args)
+        saver.save(sess, path+'/model-'+str(i)+'.cptk')
 
 
 def main():
     parser = argparse.ArgumentParser(description="Train or run leaf classifier")
     parser.add_argument("-m", "--mode", help="Train / Run", required=True)
     args = vars(parser.parse_args())
-    playGame(args)
+    if args['mode'] == 'Train':
+        train()
+    else:
+        print(':p Invalid Mode.')
+
 
 if __name__ == "__main__":
     main()
