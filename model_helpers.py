@@ -11,8 +11,8 @@ def processState(state1):
 def updateTargetGraph(tfVars):
     total_vars = len(tfVars)
     op_holder = []
-    for idx, var in enumerate(tfVars[0:total_vars/2]):
-        op_holder.append(tfVars[idx+total_vars/2].assign(var.value()))
+    for idx, var in enumerate(tfVars[0:int(total_vars/2)]):
+        op_holder.append(tfVars[idx+int(total_vars/2)].assign(var.value()))
     return op_holder
 
 
@@ -22,7 +22,7 @@ def updateTarget(op_holder, sess):
         sess.run(op)
     total_vars = len(tf.trainable_variables())
     a = tf.trainable_variables()[0].eval(session=sess)
-    b = tf.trainable_variables()[total_vars/2].eval(session=sess)
+    b = tf.trainable_variables()[int(total_vars/2)].eval(session=sess)
     if a.all() == b.all():
         print("Target Set Success")
     else:

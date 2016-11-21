@@ -8,6 +8,8 @@ Extensive changes to game model and training methods
 '''
 
 import tensorflow as tf
+import numpy as np
+import random
 import os
 import argparse
 import tensorflow.contrib.slim as slim
@@ -37,8 +39,6 @@ endE = 0.1
 anneling_steps = 10000
 # How many episodes of game environment to train network with.
 num_episodes = 10000
-# How many steps of random actions before training begins.
-pre_train_steps = 10000
 # Whether to load a saved model.
 load_model = False
 # The path to save our model to.
@@ -46,7 +46,9 @@ path = "./drqn"
 # The size of the final convolutional layer before splitting it into Advantage and Value streams.
 h_size = 512
 # The max allowed length of our episode.
-max_epLength = 100
+max_epLength = 250
+# How many steps of random actions before training begins.
+pre_train_steps = 51*max_epLength
 # Number of epidoes to periodically save for analysis
 summaryLength = 100
 
@@ -78,6 +80,9 @@ def train():
     rList = []
     total_steps = 0
 
+    # initialize game state
+    game = GameState()
+
     # Make a path for our model to be saved in.
     if not os.path.exists(path):
         os.makedirs(path)
@@ -95,7 +100,7 @@ def train():
         for i in range(num_episodes):
             episodeBuffer = []
             # Reset environment and get first new observation
-            sP = game.GameState.reset()
+            sP, truth = game.reset()
             s = processState(sP)
             d = False
             rAll = 0
@@ -108,16 +113,19 @@ def train():
                 j += 1
                 # Choose an action either randomly or from prediction
                 if np.random.rand(1) < e or total_steps < pre_train_steps:
+                    if total_steps < pre_train_steps:
+                        a = truth
+                    else:
+                        a = np.random.randint(0, actions)
                     state1 = sess.run(mainN.rnn_state,
                         feed_dict={mainN.scalarInput: [s/255.0],
                         mainN.trainLength: 1, mainN.state_in: state, mainN.batch_size: 1})
-                    a = np.random.randint(0, actions)
                 else:
                     a, state1 = sess.run([mainN.predict, mainN.rnn_state],
                         feed_dict={mainN.scalarInput: [s/255.0],
                         mainN.trainLength: 1, mainN.state_in: state, mainN.batch_size: 1})
                     a = a[0]
-                s1P, r, d = game.GameState.frame_step(a)
+                s1P, r, d, truth = game.frame_step(a)
                 s1 = processState(s1P)
                 total_steps += 1
                 episodeBuffer.append(np.reshape(np.array([s, a, r, s1, d]), [1, 5]))
@@ -125,7 +133,7 @@ def train():
                     if e > endE:
                         e -= stepDrop
 
-                    if total_steps % (update_freq*1000) == 0:
+                    if total_steps % (update_freq*100) == 0:
                         print("Target network updated.")
                         updateTarget(targetOps, sess)
 
@@ -157,9 +165,11 @@ def train():
                     break
 
             # Add the episode to the episode recorder
-            bufferArray = np.array(episodeBuffer)
-            episodeBuffer = zip(bufferArray)
-            myRecorder.add(episodeBuffer)
+            if len(episodeBuffer) > trace_length:
+                bufferArray = np.array(episodeBuffer)
+                myRecorder.add(bufferArray)
+            else:
+                print('episode buffer did not have enough frames to record')
             jList.append(j)
             rList.append(rAll)
 

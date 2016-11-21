@@ -11,15 +11,16 @@ import data_helpers
 class GameState:
     def __init__(self):
         self.score = self.loopIter = 0
-        self.frames, self.labels, self.indices = load_data()
+        self.frames, self.labels, self.ids = load_data()
 
     def reset(self):
         self.score = self.playerIndex = self.loopIter = 0
-        self.frames, self.labels, self.indices = load_data()
-        return load_image(self.frames[self.loopIter])
+        self.frames, self.labels, self.ids = load_data()
+        ind_label = np.where(self.ids == int(self.frames[self.loopIter]))
+        return load_image(self.frames[self.loopIter]), self.labels[ind_label[0]]
 
     def frame_step(self, input_action):
-        ind_label = np.where(self.indices == int(self.frames[self.loopIter]))
+        ind_label = np.where(self.ids == int(self.frames[self.loopIter]))
         if self.labels[ind_label[0]] == input_action:
             self.score += 1
             reward = 1
@@ -29,8 +30,8 @@ class GameState:
 
         self.loopIter += 1
         image_data = load_image(self.frames[self.loopIter])
-
-        return image_data, reward, False
+        ind_label = np.where(self.ids == int(self.frames[self.loopIter]))
+        return image_data, reward, False, self.labels[ind_label[0]]
 
 
 def load_data():

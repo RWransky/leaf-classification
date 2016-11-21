@@ -60,10 +60,8 @@ class Network():
 
         # In order to only propogate accurate gradients through the network, we will mask the first
         # half of the losses for each trace as per Lample & Chatlot 2016
-        # self.maskA = tf.zeros([self.batch_size, self.trainLength/2])
-        # self.maskB = tf.ones([self.batch_size, self.trainLength/2])
-        self.maskA = tf.zeros([self.batch_size, self.trainLength])
-        self.maskB = tf.ones([self.batch_size, self.trainLength])
+        self.maskA = tf.zeros([self.batch_size, tf.to_int32(self.trainLength/2)])
+        self.maskB = tf.ones([self.batch_size, tf.to_int32(self.trainLength/2)])
         self.mask = tf.concat(1, [self.maskA, self.maskB])
         self.mask = tf.reshape(self.mask, [-1])
         self.loss = tf.reduce_mean(self.td_error * self.mask)
