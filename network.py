@@ -27,7 +27,7 @@ class Network():
         self.trainLength = tf.placeholder(dtype=tf.int32)
         # We take the output from the final convolutional layer and send it to a recurrent layer.
         # The input must be reshaped into [batch x trace x units] for rnn processing,
-        # and then returned to [batch x units] when sent through the upper levles.
+        # and then returned to [batch x units] when sent through the upper levels.
         self.batch_size = tf.placeholder(dtype=tf.int32)
         self.convFlat = tf.reshape(slim.flatten(self.conv4), [self.batch_size, self.trainLength, h_size])
         self.state_in = rnn_cell.zero_state(self.batch_size, tf.float32)
@@ -47,6 +47,8 @@ class Network():
         # Then combine them together to get our final Q-values.
         self.Qout = self.Value + tf.sub(self.Advantage,
             tf.reduce_mean(self.Advantage, reduction_indices=1, keep_dims=True))
+        self.softMax = tf.nn.softmax(self.Qout)
+        self.softMaxAdv = tf.nn.softmax(self.Advantage)
         self.predict = tf.argmax(self.Qout, 1)
 
         # Below we obtain the loss by taking the sum of squares difference between the target and prediction Q values.
@@ -60,11 +62,13 @@ class Network():
 
         # In order to only propogate accurate gradients through the network, we will mask the first
         # half of the losses for each trace as per Lample & Chatlot 2016
-        self.maskA = tf.zeros([self.batch_size, tf.to_int32(self.trainLength/2)])
-        self.maskB = tf.ones([self.batch_size, tf.to_int32(self.trainLength/2)])
-        self.mask = tf.concat(1, [self.maskA, self.maskB])
-        self.mask = tf.reshape(self.mask, [-1])
-        self.loss = tf.reduce_mean(self.td_error * self.mask)
+        # self.maskA = tf.zeros([self.batch_size, tf.to_int32(self.trainLength/2)])
+        # self.maskB = tf.ones([self.batch_size, tf.to_int32(self.trainLength/2)])
+        # self.mask = tf.concat(1, [self.maskA, self.maskB])
+        # self.mask = tf.reshape(self.mask, [-1])
+        # self.loss = tf.reduce_mean(self.td_error * self.mask)
 
-        self.trainer = tf.train.AdamOptimizer(learning_rate=0.0001)
+        self.loss = tf.reduce_mean(self.td_error)
+
+        self.trainer = tf.train.AdamOptimizer(learning_rate=0.001)
         self.updateModel = self.trainer.minimize(self.loss)

@@ -9,6 +9,7 @@ Extensive changes to game model and training methods
 
 import tensorflow as tf
 import numpy as np
+import matplotlib.pyplot as plt
 import random
 import os
 import argparse
@@ -24,9 +25,9 @@ from game import *
 # Number of possible actions
 actions = 99
 # How many experience traces to use for each training step.
-batch_size = 4
+batch_size = 8
 # How long each experience trace will be when training
-trace_length = 8
+trace_length = 16
 # How often to perform a training step.
 update_freq = 5
 # Discount factor on the target Q-values
@@ -38,7 +39,7 @@ endE = 0.1
 # How many steps of training to reduce startE to endE.
 anneling_steps = 10000
 # How many episodes of game environment to train network with.
-num_episodes = 10000
+num_episodes = 500
 # How many episodes before training begins
 num_train_episodes = 50
 # Whether to load a saved model.
@@ -48,11 +49,9 @@ path = "./drqn"
 # The size of the final convolutional layer before splitting it into Advantage and Value streams.
 h_size = 512
 # The max allowed length of our episode.
-max_epLength = 250
+epLength = 250
 # How many steps of random actions before training begins.
-pre_train_steps = num_train_episodes*max_epLength
-# Number of epidoes to periodically save for analysis
-summaryLength = 100
+pre_train_steps = num_train_episodes*epLength
 
 
 def train():
@@ -81,6 +80,9 @@ def train():
     jList = []
     rList = []
     total_steps = 0
+
+    # list to store number correct per episode while training
+    correctList = []
 
     # initialize game state
     game = GameState()
@@ -111,7 +113,7 @@ def train():
             state = (np.zeros([1, h_size]), np.zeros([1, h_size]))
 
             # The Deep Reinforcement Network
-            while j < max_epLength:
+            while j < epLength:
                 j += 1
                 # Choose an action either randomly or from prediction
                 if np.random.rand(1) < e or total_steps < pre_train_steps:
@@ -176,14 +178,73 @@ def train():
             jList.append(j)
             rList.append(rAll)
 
-            print('Completed episode {0} with total score of {1}'.format(i, str(rAll)))
+            if rAll > 0:
+                totalCorrect = epLength - int((epLength - rAll)/2)
+            else:
+                totalCorrect = int((rAll + epLength)/2)
+
+            if i > num_train_episodes:
+                correctList.append(totalCorrect)
+
+            print('Completed episode {0} with {1} correctly identified'.format(i, str(totalCorrect)))
 
             # Periodically save the model.
-            if i % 1000 == 0 and i != 0:
+            if i % epLength == 0 and i != 0:
                 saver.save(sess, path+'/model-'+str(i)+'.cptk')
                 print("Saved Model")
 
         saver.save(sess, path+'/model-'+str(i)+'.cptk')
+        plt.figure(1)
+        plt.title('Number ID\'ed Correctly Throughout Training')
+        plt.plot(range(len(correctList)), correctList)
+        plt.show()
+
+
+def test():
+    tf.reset_default_graph()
+    # We define LSTM cells for primary reinforcement networks
+    cell = tf.nn.rnn_cell.LSTMCell(num_units=h_size, state_is_tuple=True)
+    mainN = Network(h_size, cell, 'main')
+
+    saver = tf.train.Saver(max_to_keep=5)
+
+    # initialize test state
+    test = TestState()
+
+    with tf.Session() as sess:
+        print('Loading Model...')
+        ckpt = tf.train.get_checkpoint_state(path)
+        saver.restore(sess, ckpt.model_checkpoint_path)
+
+        probList = []
+
+        for i in range(1):
+            # Reset environment and get first new observation
+            sP, num_tests, image_id, species = test.reset()
+            s = processState(sP)
+            j = 0
+            # Reset the recurrent layer's hidden state
+            state = (np.zeros([1, h_size]), np.zeros([1, h_size]))
+
+            # The Deep Reinforcement Network
+            while j < num_tests:
+                j += 1
+                a, state1 = sess.run([mainN.softMaxAdv, mainN.rnn_state],
+                    feed_dict={mainN.scalarInput: [s/255.0],
+                    mainN.trainLength: 1, mainN.state_in: state, mainN.batch_size: 1})
+                # a = a/np.max(a)
+                probList.append('{},'.format(str(image_id)) + convert_list_of_ints_to_string(a.tolist()))
+
+                if j < num_tests:
+                    s1P, image_id = test.frame_step(a)
+                    s1 = processState(s1P)
+
+                    s = s1
+                    sP = s1P
+                    state = state1
+
+            print('Completed processing {} test images'.format(str(num_tests)))
+            write_results_to_file(str(i), species, probList)
 
 
 def main():
@@ -192,6 +253,8 @@ def main():
     args = vars(parser.parse_args())
     if args['mode'] == 'Train':
         train()
+    elif args['mode'] == 'Test':
+        test()
     else:
         print(':p Invalid Mode.')
 
