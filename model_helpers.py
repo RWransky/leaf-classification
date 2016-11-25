@@ -1,5 +1,6 @@
 import numpy as np
 import tensorflow as tf
+import csv
 
 
 # Transform image to vector
@@ -27,3 +28,18 @@ def updateTarget(op_holder, sess):
         print("Target Set Success")
     else:
         print("Target Set Failed")
+
+
+def convert_list_of_ints_to_string(list_of_ints):
+    return (str(list_of_ints).strip('[]')).replace(" ", "")
+
+
+def write_results_to_file(file_index, species, probs):
+    print('Writing results to file')
+    with open('results{}.csv'.format(file_index), 'w') as f1:
+        writer = csv.writer(f1, delimiter=' ', escapechar=' ', quoting=csv.QUOTE_NONE)
+        header = 'id,' + ','.join(species)
+        writer.writerow([header])
+        for row in probs:
+            writer.writerow([row])
+    print('Successfully wrote results to file')
