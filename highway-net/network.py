@@ -23,23 +23,28 @@ class Network():
         self.label_oh = slim.layers.one_hot_encoding(self.label_layer, num_labels)
         # initial layer fed with batch images
         self.layer = slim.conv2d(self.input_layer, 64, [3, 3],
-        	normalizer_fn=slim.batch_norm, weights_regularizer=slim.l2_regularizer(reg_parameter),
+            normalizer_fn=slim.batch_norm, weights_regularizer=slim.l2_regularizer(reg_parameter),
             biases_regularizer=slim.l2_regularizer(reg_parameter), scope='conv_'+str(0))
         # build out the highway net units
         for i in range(5):
             for j in range(units_between_stride):
                 self.layer = highwayUnit(self.layer, j+(i*units_between_stride))
             self.layer = slim.conv2d(self.layer, 64, [3, 3],
-        		normalizer_fn=slim.batch_norm, weights_regularizer=slim.l2_regularizer(reg_parameter),
-            	biases_regularizer=slim.l2_regularizer(reg_parameter), scope='conv_s_'+str(i))
+                normalizer_fn=slim.batch_norm, weights_regularizer=slim.l2_regularizer(reg_parameter),
+                biases_regularizer=slim.l2_regularizer(reg_parameter), scope='conv_s_'+str(i))
         # extract transition layer
-        self.top = slim.conv2d(self.layer, num_labels, [3, 3],
-        	normalizer_fn=slim.batch_norm, activation_fn=None, scope='conv_top')
+        # self.top = slim.conv2d(self.layer, num_labels, [3, 3],
+            # normalizer_fn=slim.batch_norm, activation_fn=None, scope='conv_top')
+        self.top = slim.fully_connected(slim.layers.flatten(self.layer), num_labels,
+            normalizer_fn=slim.batch_norm,
+            weights_regularizer=slim.l2_regularizer(reg_parameter),
+            biases_regularizer=slim.l2_regularizer(reg_parameter),
+            activation_fn=None, scope='fully_connected_top')
         # generate softmax probabilities
-        self.output = slim.layers.softmax(self.top)
+        self.probs = slim.layers.softmax(self.top)
         # calculate reduce mean loss function
         self.loss = tf.reduce_mean(
-    		tf.nn.softmax_cross_entropy_with_logits(self.output, self.label_oh))
+            tf.nn.softmax_cross_entropy_with_logits(self.top, self.label_oh))
         # self.loss = tf.reduce_mean(-tf.reduce_sum(self.label_oh * tf.log(self.output) + 1e-10, reduction_indices=[1]))
         # optimizer
         self.trainer = tf.train.AdamOptimizer(learning_rate=learn_rate)

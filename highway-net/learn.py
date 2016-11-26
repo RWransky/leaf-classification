@@ -59,16 +59,18 @@ def train():
         for step in range(num_steps):
             offset = (step * batch_size) % (train_labels.shape[0] - batch_size)
             batch_data = train_dataset[offset:(offset + batch_size), :, :, :]
+            batch_data = (batch_data/255.0)
+            batch_data = (batch_data - np.mean(batch_data)) / np.std(batch_data)
             batch_labels = train_labels[offset:(offset + batch_size)]
-            _, lossA, yP, LO = sess.run([mainN.update, mainN.loss, mainN.output, mainN.label_oh],
+            _, lossA, yP, LO = sess.run([mainN.update, mainN.loss, mainN.probs, mainN.label_oh],
                 feed_dict={mainN.input_layer: batch_data, mainN.label_layer: batch_labels})
 
-            if (step % 100 == 0):
+            if (step % 100 == 0 & step != 0):
                 print('Minibatch loss at step %d: %f' % (step, lossA))
-                print('Minibatch accuracy: %.1f%%' % accuracy(yP, L0))
-                yP, LO = sess.run([mainN.output, mainN.label_oh],
-                    feed_dict={input_layer: valid_dataset, label_layer: valid_labels})
-                print('Validation accuracy: %.1f%%' % accuracy(yP, L0))
+                print('Minibatch accuracy: %.1f%%' % accuracy(yP, LO))
+                yP, LO = sess.run([mainN.probs, mainN.label_oh],
+                    feed_dict={mainN.input_layer: valid_dataset, mainN.label_layer: valid_labels})
+                print('Validation accuracy: %.1f%%' % accuracy(yP, LO))
                 saver.save(sess, path+'/model-'+str(step)+'.cptk')
                 print("Saved Model")
 
