@@ -7,6 +7,8 @@ from skimage import io
 
 import data_helpers
 
+base_path = os.path.dirname(os.getcwd())
+
 
 class GameState:
     def __init__(self):
@@ -53,19 +55,19 @@ class TestState:
 
 
 def load_test_data():
-    df = pd.read_csv('test.csv')
+    df = pd.read_csv('{}/test.csv'.format(base_path))
     image_id = df[['id']].values
     shuffle = data_helpers.shuffle_test_data(image_id)
     return shuffle
 
 
 def load_species_list():
-    df = pd.read_csv('train.csv')
+    df = pd.read_csv('{}/train.csv'.format(base_path))
     return data_helpers.convert_labels_to_species(df.species)
 
 
 def load_data():
-    df = pd.read_csv('train.csv')
+    df = pd.read_csv('{}/train.csv'.format(base_path))
     image_id = df[['id']].values
     species = df.species
     labels = data_helpers.convert_species_to_labels(species)
@@ -74,4 +76,4 @@ def load_data():
 
 
 def load_image(image_id):
-    return io.imread('processed/{}.jpg'.format(str(int(image_id))))
+    return io.imread('{0}/processed/{1}.jpg'.format(base_path, str(int(image_id))))
