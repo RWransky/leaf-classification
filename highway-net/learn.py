@@ -86,49 +86,25 @@ def train():
 
 def test():
     tf.reset_default_graph()
-    # We define LSTM cells for primary reinforcement networks
-    cell = tf.nn.rnn_cell.LSTMCell(num_units=h_size, state_is_tuple=True)
-    mainN = Network(h_size, cell, 'main')
+    mainN = Network()
 
     saver = tf.train.Saver(max_to_keep=5)
 
-    # initialize test state
-    test = TestState()
+    # load data
+    images, image_id, species = load_test_data()
+
+    test_dataset = reformat(images)
 
     with tf.Session() as sess:
         print('Loading Model...')
         ckpt = tf.train.get_checkpoint_state(path)
         saver.restore(sess, ckpt.model_checkpoint_path)
+        print('Model Loaded!')
 
-        probList = []
-
-        for i in range(1):
-            # Reset environment and get first new observation
-            sP, num_tests, image_id, species = test.reset()
-            s = processState(sP)
-            j = 0
-            # Reset the recurrent layer's hidden state
-            state = (np.zeros([1, h_size]), np.zeros([1, h_size]))
-
-            # The Deep Reinforcement Network
-            while j < num_tests:
-                j += 1
-                a, state1 = sess.run([mainN.softMaxAdv, mainN.rnn_state],
-                    feed_dict={mainN.scalarInput: [s/255.0],
-                    mainN.trainLength: 1, mainN.state_in: state, mainN.batch_size: 1})
-                # a = a/np.max(a)
-                probList.append('{},'.format(str(image_id)) + convert_list_of_ints_to_string(a.tolist()))
-
-                if j < num_tests:
-                    s1P, image_id = test.frame_step(a)
-                    s1 = processState(s1P)
-
-                    s = s1
-                    sP = s1P
-                    state = state1
-
-            print('Completed processing {} test images'.format(str(num_tests)))
-            write_results_to_file(str(i), species, probList)
+        yP = sess.run([mainN.probs], feed_dict={mainN.input_layer: test_dataset})
+        np.save('testProbs', yP)
+        print('Completed processing {} test images'.format(str(image_id.shape[0])))
+        write_results_to_file(species, image_id, yP)
 
 
 def main():

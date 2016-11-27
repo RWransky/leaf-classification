@@ -1,5 +1,7 @@
 from sklearn.cross_validation import train_test_split
 import numpy as np
+import csv
+import os
 
 
 # We will use 80% for training and 20% for validation
@@ -16,3 +18,24 @@ def accuracy(predictions, labels):
 
 def reformat(dataset):
     return dataset.reshape((-1, 80, 80, 1)).astype(np.float32)
+
+
+def convert_list_of_ints_to_string(list_of_ints):
+    return (str(list_of_ints).strip('[]')).replace(" ", "")
+
+
+def write_results_to_file(species, ids, probs):
+    # Make a path for our results to be saved to
+    if not os.path.exists('results'):
+        os.makedirs('results')
+    print('Writing results to file')
+    with open('results/results.csv', 'w') as f1:
+        writer = csv.writer(f1, delimiter=' ', escapechar=' ', quoting=csv.QUOTE_NONE)
+        header = 'id,' + ','.join(species)
+        writer.writerow([header])
+        for i in range(ids.shape[0]):
+            row = probs[i]
+            row = convert_list_of_ints_to_string(row)
+            row = '{},'.format(str(int(ids[i]))) + row
+            writer.writerow([row])
+    print('Successfully wrote results to file')
