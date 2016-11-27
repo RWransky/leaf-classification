@@ -43,8 +43,8 @@ def train():
 
     saver = tf.train.Saver(max_to_keep=5)
 
-    trainables = tf.trainable_variables()
-
+    # Make list to store losses
+    losses = []
     # Make a path for our model to be saved in.
     if not os.path.exists(path):
         os.makedirs(path)
@@ -57,6 +57,7 @@ def train():
         sess.run(init)
 
         for step in range(num_steps):
+            print('Processing step {}'.format(step))
             offset = (step * batch_size) % (train_labels.shape[0] - batch_size)
             batch_data = train_dataset[offset:(offset + batch_size), :, :, :]
             batch_data = (batch_data/255.0)
@@ -64,15 +65,23 @@ def train():
             batch_labels = train_labels[offset:(offset + batch_size)]
             _, lossA, yP, LO = sess.run([mainN.update, mainN.loss, mainN.probs, mainN.label_oh],
                 feed_dict={mainN.input_layer: batch_data, mainN.label_layer: batch_labels})
-
-            if (step % 100 == 0 & step != 0):
+            losses.append(lossA)
+            if (step % 10 == 0):
                 print('Minibatch loss at step %d: %f' % (step, lossA))
                 print('Minibatch accuracy: %.1f%%' % accuracy(yP, LO))
-                yP, LO = sess.run([mainN.probs, mainN.label_oh],
-                    feed_dict={mainN.input_layer: valid_dataset, mainN.label_layer: valid_labels})
-                print('Validation accuracy: %.1f%%' % accuracy(yP, LO))
                 saver.save(sess, path+'/model-'+str(step)+'.cptk')
                 print("Saved Model")
+        valid_dataset = (valid_dataset/255.0)
+        valid_dataset = (valid_dataset - np.mean(valid_dataset)) / np.std(valid_dataset)
+        yP, LO = sess.run([mainN.probs, mainN.label_oh],
+            feed_dict={mainN.input_layer: valid_dataset, mainN.label_layer: valid_labels})
+        print('Validation accuracy: %.1f%%' % accuracy(yP, LO))
+        saver.save(sess, path+'/model-'+str(step)+'.cptk')
+        print("Saved Model")
+        plt.figure(1)
+        plt.title('Training Loss')
+        plt.plot(range(len(losses)), losses)
+        plt.show()
 
 
 def test():
