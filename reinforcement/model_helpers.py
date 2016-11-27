@@ -1,6 +1,7 @@
 import numpy as np
 import tensorflow as tf
 import csv
+import os
 
 
 # Transform image to vector
@@ -35,6 +36,9 @@ def convert_list_of_ints_to_string(list_of_ints):
 
 
 def write_results_to_file(file_index, species, probs):
+    # Make a path for our results to be saved to
+    if not os.path.exists('results'):
+        os.makedirs('results')
     print('Writing results to file')
     with open('results/results{}.csv'.format(file_index), 'w') as f1:
         writer = csv.writer(f1, delimiter=' ', escapechar=' ', quoting=csv.QUOTE_NONE)

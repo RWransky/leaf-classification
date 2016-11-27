@@ -70,9 +70,11 @@ def load_data():
     df = pd.read_csv('{}/train.csv'.format(base_path))
     image_id = df[['id']].values
     species = df.species
-    labels = data_helpers.convert_species_to_labels(species)
-    shuffle = data_helpers.shuffle_data(image_id)
-    return shuffle, labels, image_id
+    species = species.values.reshape((species.shape[0], 1))
+    stacked = np.concatenate((image_id, species), axis=1)
+    ids, labels = data_helpers.convert_species_to_labels(stacked)
+    shuffle_id, shuffle_labels = data_helpers.shuffle_data(ids, labels)
+    return shuffle_id, shuffle_labels, image_id
 
 
 def load_image(image_id):
