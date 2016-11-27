@@ -41,7 +41,7 @@ class Network():
             biases_regularizer=slim.l2_regularizer(reg_parameter),
             activation_fn=None, scope='fully_connected_top')
         # generate softmax probabilities
-        self.probs = slim.layers.softmax(self.top)
+        self.probs = tf.nn.softmax(self.top)
         # calculate reduce mean loss function
         self.loss = tf.reduce_mean(
             tf.nn.softmax_cross_entropy_with_logits(self.top, self.label_oh))
