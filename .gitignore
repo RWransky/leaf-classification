@@ -3,3 +3,5 @@
 *.h5
 model.json
 test_run.py
+*.cptk*
+checkpoint
