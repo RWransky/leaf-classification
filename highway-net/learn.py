@@ -20,7 +20,7 @@ from network import *
 # Number of possible actions
 actions = 99
 # How many experience traces to use for each training step.
-batch_size = 32
+batch_size = 16
 # Number of training steps
 num_steps = 101
 load_model = False
@@ -107,14 +107,24 @@ def test():
         write_results_to_file(species, image_id, yP)
 
 
+def writeResults():
+    # load data
+    images, image_id, species = load_test_data()
+    # load saved results
+    probs = np.load('testProbs.npy')
+    write_results_to_file(species, image_id, probs)
+
+
 def main():
     parser = argparse.ArgumentParser(description="Train or run leaf classifier")
-    parser.add_argument("-m", "--mode", help="Train / Run", required=True)
+    parser.add_argument("-m", "--mode", help="Train / Run / Write", required=True)
     args = vars(parser.parse_args())
     if args['mode'] == 'Train':
         train()
     elif args['mode'] == 'Test':
         test()
+    elif args['mode'] == 'Write':
+        writeResults()
     else:
         print(':p Invalid Mode.')
 

@@ -39,7 +39,7 @@ endE = 0.1
 # How many steps of training to reduce startE to endE.
 anneling_steps = 10000
 # How many episodes of game environment to train network with.
-num_episodes = 500
+num_episodes = 250
 # How many episodes before training begins
 num_train_episodes = 50
 # Whether to load a saved model.

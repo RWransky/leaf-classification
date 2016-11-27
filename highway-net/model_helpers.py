@@ -1,5 +1,6 @@
 from sklearn.cross_validation import train_test_split
 import numpy as np
+import re
 import csv
 import os
 
@@ -20,8 +21,8 @@ def reformat(dataset):
     return dataset.reshape((-1, 80, 80, 1)).astype(np.float32)
 
 
-def convert_list_of_ints_to_string(list_of_ints):
-    return (str(list_of_ints).strip('[]')).replace(" ", "")
+def convert_list_of_ints_to_string(array_of_ints):
+    return re.sub('\s+', ',', np.array_str(array_of_ints).strip('[]'))
 
 
 def write_results_to_file(species, ids, probs):
@@ -34,8 +35,8 @@ def write_results_to_file(species, ids, probs):
         header = 'id,' + ','.join(species)
         writer.writerow([header])
         for i in range(ids.shape[0]):
-            row = probs[i]
+            row = probs[0][i]
             row = convert_list_of_ints_to_string(row)
-            row = '{},'.format(str(int(ids[i]))) + row
+            row = '{}'.format(str(int(ids[i]))) + row
             writer.writerow([row])
     print('Successfully wrote results to file')
