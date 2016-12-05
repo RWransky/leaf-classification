@@ -43,9 +43,8 @@ class Network():
         # generate softmax probabilities
         self.probs = tf.nn.softmax(self.top)
         # calculate reduce mean loss function
-        self.loss = tf.reduce_mean(
-            tf.nn.softmax_cross_entropy_with_logits(self.top, self.label_oh))
-        # self.loss = tf.reduce_mean(-tf.reduce_sum(self.label_oh * tf.log(self.output) + 1e-10, reduction_indices=[1]))
+        self.loss = tf.reduce_mean(-tf.reduce_sum(
+            self.label_oh * tf.log(self.probs) + 1e-10, reduction_indices=[1]))
         # optimizer
         self.trainer = tf.train.AdamOptimizer(learning_rate=learn_rate)
         # minimization
@@ -54,10 +53,11 @@ class Network():
 
 def highwayUnit(input_layer, i):
     with tf.variable_scope("highway_unit"+str(i)):
-        H = slim.conv2d(input_layer, 64, [3, 3])
-        # Push the network to use the skip connection via a negative init
-        T = slim.conv2d(input_layer, 64, [3, 3],
-            biases_initializer=tf.constant_initializer(-1.0),
-            activation_fn=tf.nn.sigmoid)
-        output = H*T + input_layer*(1.0-T)
-        return output
+        with slim.arg_scope([slim.conv2d], normalizer_fn=slim.batch_norm):
+            H = slim.conv2d(input_layer, 64, [3, 3])
+            # Push the network to use the skip connection via a negative init
+            T = slim.conv2d(input_layer, 64, [3, 3],
+                biases_initializer=tf.constant_initializer(-1.0),
+                activation_fn=tf.nn.sigmoid)
+            output = H*T + input_layer*(1.0-T)
+            return output
