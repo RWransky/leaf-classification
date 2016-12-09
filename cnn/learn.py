@@ -20,9 +20,9 @@ from network import *
 # Number of possible actions
 actions = 99
 # How many experience traces to use for each training step.
-batch_size = 16
+batch_size = 64
 # Number of training steps
-num_steps = 2001
+num_steps = 501
 
 # The path to save our model to.
 path = "./cnn"

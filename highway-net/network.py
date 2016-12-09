@@ -9,7 +9,7 @@ import tensorflow.contrib.slim as slim
 
 num_labels = 99
 reg_parameter = 0.001
-learn_rate = 0.01
+learn_rate = 0.001
 # total layers need to be divisible by 5
 total_layers = 5
 units_between_stride = int(total_layers / 5)

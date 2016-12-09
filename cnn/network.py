@@ -9,15 +9,15 @@ import tensorflow.contrib.slim as slim
 
 image_size = 80
 num_channels = 1
-batch_size = 16
-patch_size = 3
+batch_size = 64
+patch_size = 5
 depth = 64
 num_hidden = 64
 
 num_labels = 99
 reg_parameter = 0.001
-learn_rate = 0.001
-keep_prob = 0.65
+learn_rate = 0.01
+keep_prob = 0.5
 
 
 class Network():
@@ -82,19 +82,19 @@ class Network():
         self.layer3 = tf.nn.dropout(self.layer3, keep_prob)
         # 2nd fully connected layer
         self.logits = tf.matmul(self.layer3, self.layer4_weights) + self.layer4_biases
-        # Softmax
+        # Softmax Predictions
         self.probs = tf.nn.softmax(self.logits)
 
         # Training computation.
-        self.loss = tf.reduce_mean(-tf.reduce_sum(
-            self.label_oh * tf.log(self.probs) + 1e-10, reduction_indices=[1]))
+        self.loss = tf.reduce_mean(
+            tf.nn.softmax_cross_entropy_with_logits(self.logits, self.label_oh))
+        # self.loss = tf.reduce_mean(-tf.reduce_sum(
+            # self.label_oh * tf.log(self.probs) + 1e-10, reduction_indices=[1]))
 
         # Optimizer.
         self.trainer = tf.train.AdamOptimizer(learning_rate=learn_rate)
         # minimization
         self.update = self.trainer.minimize(self.loss)
-        # Predictions
-        self.probs = tf.nn.softmax(self.logits)
 
 
 # Batch Norm Wrapper inspired by http://r2rt.com/implementing-batch-normalization-in-tensorflow.html

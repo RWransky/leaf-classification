@@ -30,13 +30,13 @@ def load_test_data():
 
 
 def augment_data(images, labels):
-    more_images = np.zeros((4*images.shape[0], images.shape[1], images.shape[2],))
-    more_labels = np.zeros((4*labels.shape[0]))
+    more_images = np.zeros((8*images.shape[0], images.shape[1], images.shape[2],))
+    more_labels = np.zeros((8*labels.shape[0]))
     for i in range(labels.shape[0]):
-        for j in range(4):
+        for j in range(8):
             rotation = j*90
-            more_images[4*i+j] = ndimage.rotate(images[i], rotation)
-            more_labels[4*i+j] = labels[i]
+            more_images[8*i+j] = ndimage.rotate(images[i], rotation)
+            more_labels[8*i+j] = labels[i]
     return shuffle(more_images, more_labels)
 
 

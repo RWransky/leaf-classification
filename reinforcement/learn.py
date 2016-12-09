@@ -29,7 +29,7 @@ batch_size = 8
 # How long each experience trace will be when training
 trace_length = 16
 # How often to perform a training step.
-update_freq = 5
+update_freq = 1
 # Discount factor on the target Q-values
 y = .99
 # Starting chance of random action
@@ -39,7 +39,7 @@ endE = 0.1
 # How many steps of training to reduce startE to endE.
 anneling_steps = 10000
 # How many episodes of game environment to train network with.
-num_episodes = 250
+num_episodes = 750
 # How many episodes before training begins
 num_train_episodes = 50
 # Whether to load a saved model.
@@ -229,7 +229,7 @@ def test():
             # The Deep Reinforcement Network
             while j < num_tests:
                 j += 1
-                a, state1 = sess.run([mainN.softMaxAdv, mainN.rnn_state],
+                a, state1 = sess.run([mainN.softMax, mainN.rnn_state],
                     feed_dict={mainN.scalarInput: [s/255.0],
                     mainN.trainLength: 1, mainN.state_in: state, mainN.batch_size: 1})
                 # a = a/np.max(a)
