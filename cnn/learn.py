@@ -71,6 +71,9 @@ def train(load_model=False):
             if (step % 100 == 0):
                 print('Minibatch loss at step %d: %f' % (step, lossA))
                 print('Minibatch accuracy: %.1f%%' % accuracy(yP, LO))
+                yP, LO = sess.run([mainN.probs, mainN.label_oh],
+                    feed_dict={mainN.data: valid_dataset, mainN.labels: valid_labels})
+                print('Validation accuracy: %.1f%%' % accuracy(yP, LO))
                 saver.save(sess, path+'/model-'+str(step)+'.cptk')
                 print("Saved Model")
         yP, LO = sess.run([mainN.probs, mainN.label_oh],

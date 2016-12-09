@@ -6,7 +6,7 @@ import os
 
 # Transform image to vector
 def processState(state1):
-    return np.reshape(state1, [80*80])
+    return np.reshape(state1, [32*32])
 
 
 # Updates target graph with parameters from the main graph

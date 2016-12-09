@@ -37,7 +37,7 @@ def pad_image(array):
 
 
 def scale_image(array):
-    return cv2.resize(np.uint8(array), (80, 80))
+    return cv2.resize(np.uint8(array), (32, 32))
 
 
 def preprocess(args):

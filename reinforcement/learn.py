@@ -27,7 +27,7 @@ actions = 99
 # How many experience traces to use for each training step.
 batch_size = 8
 # How long each experience trace will be when training
-trace_length = 16
+trace_length = 55
 # How often to perform a training step.
 update_freq = 1
 # Discount factor on the target Q-values
@@ -39,7 +39,7 @@ endE = 0.1
 # How many steps of training to reduce startE to endE.
 anneling_steps = 10000
 # How many episodes of game environment to train network with.
-num_episodes = 750
+num_episodes = 150
 # How many episodes before training begins
 num_train_episodes = 50
 # Whether to load a saved model.
@@ -47,9 +47,9 @@ load_model = False
 # The path to save our model to.
 path = "./drqn"
 # The size of the final convolutional layer before splitting it into Advantage and Value streams.
-h_size = 512
+h_size = 504
 # The max allowed length of our episode.
-epLength = 250
+epLength = 64
 # How many steps of random actions before training begins.
 pre_train_steps = num_train_episodes*epLength
 
@@ -169,7 +169,7 @@ def train():
                     break
 
             # Add the episode to the episode recorder
-            if len(episodeBuffer) > trace_length:
+            if len(episodeBuffer) >= trace_length:
                 if i <= num_train_episodes or i % 7 == 0:
                     bufferArray = np.array(episodeBuffer)
                     myRecorder.add(bufferArray)

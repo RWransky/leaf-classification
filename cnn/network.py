@@ -7,7 +7,7 @@ Created by @MWransky
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
 
-image_size = 80
+image_size = 32
 num_channels = 1
 batch_size = 64
 patch_size = 5
@@ -23,7 +23,7 @@ keep_prob = 0.5
 class Network():
     def __init__(self, is_training):
         # Input data.
-        self.data = tf.placeholder(shape=[None, 80, 80, 1], dtype=tf.float32, name='input')
+        self.data = tf.placeholder(shape=[None, image_size, image_size, 1], dtype=tf.float32, name='input')
         self.labels = tf.placeholder(shape=[None], dtype=tf.int32)
         self.label_oh = slim.layers.one_hot_encoding(self.labels, num_labels)
 

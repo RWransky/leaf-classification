@@ -18,7 +18,7 @@ def accuracy(predictions, labels):
 
 
 def reformat(dataset):
-    return dataset.reshape((-1, 80, 80, 1)).astype(np.float32)
+    return dataset.reshape((-1, 32, 32, 1)).astype(np.float32)
 
 
 def convert_list_of_ints_to_string(array_of_ints):

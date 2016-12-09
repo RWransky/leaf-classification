@@ -6,22 +6,22 @@ class Network():
     def __init__(self, h_size, rnn_cell, network_name):
         # The network recieves a frame from the game, flattened into an array
         # It then resizes it and processes it through four convolutional layers
-        self.scalarInput = tf.placeholder(shape=[None, 80*80], dtype=tf.float32)
-        self.imageIn = tf.reshape(self.scalarInput, shape=[-1, 80, 80, 1])
+        self.scalarInput = tf.placeholder(shape=[None, 32*32], dtype=tf.float32)
+        self.imageIn = tf.reshape(self.scalarInput, shape=[-1, 32, 32, 1])
         self.conv1 = slim.convolution2d(inputs=self.imageIn, num_outputs=32,
-            kernel_size=[8, 8], stride=[4, 4], padding='VALID',
+            kernel_size=[2, 2], stride=[1, 1], padding='VALID',
             biases_initializer=None, scope=network_name+'_conv1')
         self.conv2 = slim.convolution2d(
             inputs=self.conv1, num_outputs=64,
-            kernel_size=[4, 4], stride=[2, 2], padding='VALID',
+            kernel_size=[2, 2], stride=[2, 2], padding='VALID',
             biases_initializer=None, scope=network_name+'_conv2')
         self.conv3 = slim.convolution2d(
-            inputs=self.conv2, num_outputs=64,
+            inputs=self.conv2, num_outputs=32,
             kernel_size=[3, 3], stride=[1, 1], padding='VALID',
             biases_initializer=None, scope=network_name+'_conv3')
         self.conv4 = slim.convolution2d(
-            inputs=self.conv3, num_outputs=512,
-            kernel_size=[6, 6], stride=[1, 1], padding='VALID',
+            inputs=self.conv3, num_outputs=14,
+            kernel_size=[2, 2], stride=[2, 2], padding='VALID',
             biases_initializer=None, scope=network_name+'_conv4')
 
         self.trainLength = tf.placeholder(dtype=tf.int32)
