@@ -22,11 +22,22 @@ def load_data():
     return more_images, more_labels
 
 
+def load_full_data():
+    df = pd.read_csv('{}/train.csv'.format(base_path))
+    image_id = df[['id']].values
+    species = df.species
+    species = species.values.reshape((species.shape[0], 1))
+    stacked = np.concatenate((image_id, species), axis=1)
+    image_id, labels = convert_species_to_labels(stacked)
+    images = convert_ids_to_images(image_id)
+    return images, labels
+
+
 def load_test_data():
     df = pd.read_csv('{}/test.csv'.format(base_path))
     image_id = df[['id']].values
     images = convert_ids_to_images(image_id)
-    return images, image_id, convert_labels_to_species()
+    return augment_test_data(images), image_id, convert_labels_to_species()
 
 
 def augment_data(images, labels):
@@ -38,6 +49,15 @@ def augment_data(images, labels):
             more_images[8*i+j] = ndimage.rotate(images[i], rotation)
             more_labels[8*i+j] = labels[i]
     return shuffle(more_images, more_labels)
+
+
+def augment_test_data(images):
+    more_images = np.zeros((4*images.shape[0], images.shape[1], images.shape[2],))
+    for i in range(images.shape[0]):
+        for j in range(4):
+            rotation = j*90
+            more_images[4*i+j] = ndimage.rotate(images[i], rotation)
+    return more_images
 
 
 def convert_species_to_labels(data):

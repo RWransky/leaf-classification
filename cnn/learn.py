@@ -22,7 +22,7 @@ actions = 99
 # How many experience traces to use for each training step.
 batch_size = 64
 # Number of training steps
-num_steps = 501
+num_steps = 5501
 
 # The path to save our model to.
 path = "./cnn"
@@ -101,7 +101,6 @@ def validate():
 
     # convert to training and validation sets
     x_train, x_valid, train_labels, valid_labels = split_data(images, labels)
-    train_dataset = reformat(x_train)
     valid_dataset = reformat(x_valid)
 
     with tf.Session() as sess:
@@ -125,7 +124,7 @@ def test():
     images, image_id, species = load_test_data()
 
     test_dataset = reformat(images)
-
+    test_dataset.astype(float)
     with tf.Session() as sess:
         print('Loading Model...')
         ckpt = tf.train.get_checkpoint_state(path)

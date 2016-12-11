@@ -21,8 +21,24 @@ def reformat(dataset):
     return dataset.reshape((-1, 32, 32, 1)).astype(np.float32)
 
 
-def convert_list_of_ints_to_string(array_of_ints):
-    return re.sub('\s+', ',', np.array_str(array_of_ints).strip('[]'))
+def average_probs(probs):
+    avg_probs = np.zeros((99,))
+    for j in range(4):
+        avg_probs += probs[j]
+    avg_probs = avg_probs/4
+    return np.round(avg_probs, 4)
+
+
+def convert_list_of_ints_to_string(list_of_ints):
+    return re.sub('\s+', ',', np.array_str(list_of_ints).strip('[]'))
+
+
+def convert_array_of_ints_to_string(array_of_ints):
+    return np.array_str(array_of_ints).strip('[]')
+
+
+def scale_probabilities(row):
+    return row/(np.max(row) + 1e-10)
 
 
 def write_results_to_file(species, ids, probs):
@@ -35,7 +51,7 @@ def write_results_to_file(species, ids, probs):
         header = 'id,' + ','.join(species)
         writer.writerow([header])
         for i in range(ids.shape[0]):
-            row = probs[0][i]
+            row = average_probs(probs[0][4*i:4*i+4])
             row = convert_list_of_ints_to_string(row)
             row = '{}'.format(str(int(ids[i]))) + row
             writer.writerow([row])
