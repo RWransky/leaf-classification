@@ -229,7 +229,7 @@ def test():
             # The Deep Reinforcement Network
             while j < num_tests:
                 j += 1
-                a, state1 = sess.run([mainN.softMax, mainN.rnn_state],
+                a, state1 = sess.run([mainN.Qout, mainN.rnn_state],
                     feed_dict={mainN.scalarInput: [s/255.0],
                     mainN.trainLength: 1, mainN.state_in: state, mainN.batch_size: 1})
                 # a = a/np.max(a)
