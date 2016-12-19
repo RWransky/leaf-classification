@@ -20,7 +20,7 @@ from network import *
 # Number of possible species
 numb_species_types = 99
 # How many experience traces to use for each training step.
-batch_size = 32
+batch_size = 50
 # Number of training steps
 num_steps = 1351
 

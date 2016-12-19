@@ -15,8 +15,8 @@ num_hidden = 32
 
 num_labels = 99
 reg_parameter = 0.001
-learn_rate = 0.005
-keep_prob = 0.55
+learn_rate = 0.001
+keep_prob = 0.75
 
 
 class Network():
