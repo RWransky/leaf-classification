@@ -72,7 +72,7 @@ def convert_labels_to_species():
 
 def convert_ids_to_images(ids):
     num_ids = ids.shape[0]
-    images = np.zeros((num_ids, 80, 80,), dtype=np.uint32)
+    images = np.zeros((num_ids, 32, 32,), dtype=np.uint32)
     for i in range(num_ids):
         images[i] = load_image(ids[i])
     return images
